@@ -433,7 +433,8 @@ int avaliar_pontuacao(tp_carta cartas[], int total, tp_carta cartas_combinacao[5
     // Limpa as cartas da combinação
     memset(cartas_combinacao, 0, sizeof(tp_carta) * 5);
 
-    // Verifica combinações na ordem de importância
+    // [NOVO] Verifica Quadra primeiro, pois é uma das mãos mais fortes
+    if (tem_quadra(cartas, total, cartas_combinacao)) return 8; // Retorna 8 para Quadra
     if (tem_full_house(cartas, total, cartas_combinacao)) return 7;
     if (tem_flush(cartas, total, cartas_combinacao)) return 6;
     if (tem_straight(cartas, total, cartas_combinacao)) return 5;
@@ -555,6 +556,22 @@ void imprime_valor_carta(int valor) { //Para desempate
     }
 }
 
+void salvar_log(const char* mensagem) {
+    FILE *arquivo = fopen("log_poker.txt", "a"); // "a" para adicionar ao final do arquivo
+    if (arquivo == NULL) {
+        perror("Erro ao abrir o arquivo de log");
+        return;
+    }
+    
+    // Pega a hora atual para registrar no log
+    time_t t = time(NULL);
+    struct tm *tm = localtime(&t);
+    char tempo_str[64];
+    strftime(tempo_str, sizeof(tempo_str), "%Y-%m-%d %H:%M:%S", tm);
+
+    fprintf(arquivo, "[%s] %s\n", tempo_str, mensagem);
+    fclose(arquivo);
+}
 
 void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_pilha *baralho, tp_listad *mesa, ArvAVL* arvore){
     static int resultado_anunciado = 0;
@@ -624,11 +641,18 @@ void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_pilha *baralho, tp_l
     }
 
     resultado_anunciado = 1;
+
+    if (qnt_vencedores == 1) {
+    char log_msg[200];
+    sprintf(log_msg, "Vencedor da rodada: %s", jogadores[vencedores[0]].nome);
+    salvar_log(log_msg);
+}
 }
 
 // Função para imprimir o tipo de mão
 void imprimir_tipo_mao(int tipo) {
     const char *nomes[] = {
+        "", // Posição 0 vazia para alinhar com os valores de 1 a 8
         "Carta Alta",
         "Um Par",
         "Dois Pares",
@@ -638,7 +662,9 @@ void imprimir_tipo_mao(int tipo) {
         "Full House", 
         "Quadra"
     };
-    printf("%s", nomes[tipo-1]);
+    if (tipo >= 1 && tipo <= 8) {
+        printf("%s", nomes[tipo]);
+    }
 }
 
 void print_contador(int repeticoes, int tipo_mao){
@@ -647,39 +673,39 @@ void print_contador(int repeticoes, int tipo_mao){
 	printf("apareceu no jogo.\n");
 }
 
-void contador_maos(ArvAVL* arvore, int qnt){
-    int count[7] = {0}, tipo = 0;
-    for (int i=0; i<qnt; i++){
-        while(!consultarValorAVL(arvore, tipo)){
-            switch(i){
-                case 0:
-                    count[0]++;
-                    break;
-                case 1:
-                    count[1]++;
-                    break;
-                case 2:
-                    count[2]++;
-                    break;
-                case 3:
-                    count[3]++;
-                    break;
-                case 4:
-                    count[4]++;
-                    break;
-                case 5:
-                    count[5]++;
-                    break;
-                case 6:
-                    count[6]++;
-                    break;
-            }
-            tipo++;
-        }
+// Função auxiliar para percorrer a árvore em ordem e contar as mãos
+void percorrer_e_contar(struct NO* no, int contagem[]) {
+    if (no == NULL) {
+        return;
+    }
+    // O valor 'info' do nó é o tipo da mão (1 a 8)
+    if (no->info >= 1 && no->info <= 8) {
+        contagem[no->info]++;
+    }
+    percorrer_e_contar(no->esq, contagem);
+    percorrer_e_contar(no->dir, contagem);
+}
+
+void apresentar_contagem_maos(ArvAVL* arvore) {
+    if (arvore == NULL || *arvore == NULL) {
+        printf("\nNenhuma jogada vencedora foi registrada.\n");
+        return;
     }
     
-    for(int j=0; j<qnt; j++){
-        print_contador(count[j], j);
+    // Array para contar as 8 combinações + 1 (índice 0 não usado)
+    int contagem[9] = {0}; 
+
+    // Preenche o array de contagem percorrendo a árvore
+    percorrer_e_contar(*arvore, contagem);
+
+    printf("\n--- ESTATÍSTICAS FINAIS DO JOGO ---\n");
+    printf("Quantidade de vezes que cada combinação venceu uma rodada:\n");
+
+    for (int i = 1; i <= 8; i++) {
+        if (contagem[i] > 0) {
+            imprimir_tipo_mao(i);
+            printf(": %d vez(es)\n", contagem[i]);
+        }
     }
 }
 
@@ -697,22 +723,37 @@ int todos_apostaram_mesmo_valor(int apostas[], tp_jogador jogadores[], int qnt) 
     return 1; // Todos que ainda jogam apostaram o mesmo valor
 }
 
-
+// Menu inicial das jogadas do jogador
 int print_escolhas_jogador(tp_listad *mesa, tp_jogador jogadores[], int jogador_atual, int aposta_rodada, int apostas[], pote *pote_atual)   {
     printf("************************************\n");
-    printf("mesa atual:");
-    imprime_listad(mesa, 1);
-    printf("Sua mão:");
-    imprimir_vetor(jogadores[jogador_atual].mao);
-    printf("Dinheiro atual: %d\n", jogadores[jogador_atual].carteira);
-    printf("Aposta mínima da rodada: %d\n", aposta_rodada);
+    printf("Mesa atual: ");
+    imprime_listad(mesa, 1); // Imprime as cartas na mesa
+
+    printf("Sua mao:\n");
+    // CORREÇÃO: Imprime as duas cartas da mão do jogador corretamente
+    imprime_carta(jogadores[jogador_atual].mao[0]);
+    imprime_carta(jogadores[jogador_atual].mao[1]);
+
+    printf("\nDinheiro atual: %d\n", jogadores[jogador_atual].carteira);
+    printf("Aposta minima da rodada: %d\n", aposta_rodada);
     printf("Pote atual: %d\n", pote_atual->pote);
-    printf("Sua aposta atual: %d\n", apostas[jogador_atual]);
-    printf("************************************\n\n\n");
+    printf("Sua aposta na rodada: %d\n", apostas[jogador_atual]);
+    printf("************************************\n");
+
     printf("\n%s, faça sua escolha:\n", jogadores[jogador_atual].nome);
     printf("1 - Aumentar aposta\n");
     printf("2 - Desistir\n");
-    printf("3 - Pagar (%d)\n", aposta_rodada - apostas[jogador_atual]);
+
+    // MELHORIA: Informa o valor correto a pagar ou se a ação é um "All-in"
+    int valor_a_pagar = aposta_rodada - apostas[jogador_atual];
+    if (valor_a_pagar <= 0) {
+        printf("3 - Passar (Check)\n"); // Se não há aposta para cobrir
+    } else if (valor_a_pagar >= jogadores[jogador_atual].carteira) {
+        printf("3 - All-in (%d)\n", jogadores[jogador_atual].carteira);
+    } else {
+        printf("3 - Pagar (%d)\n", valor_a_pagar);
+    }
+    
     printf("Escolha: ");
     
     int escolha;
@@ -723,10 +764,9 @@ int print_escolhas_jogador(tp_listad *mesa, tp_jogador jogadores[], int jogador_
 
 // Função para escolha de ação do jogador durante a rodada de apostas - CORRIGIDA
 void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa) {
-    int aposta_rodada = 10; // Valor inicial mínimo
+    int aposta_rodada = 10;
     int apostas[qnt + 1];
 
-    // Inicializa apostas com zero
     for (int i = 0; i <= qnt; i++) {
         apostas[i] = 0;
     }
@@ -737,8 +777,8 @@ void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa)
         for (int j = 1; j <= qnt; j++) {
             if (!jogadores[j].ta_jogando) continue;
             
-            // Verifica se precisa agir (aposta abaixo da rodada ou ainda não apostou)
             if (apostas[j] < aposta_rodada || apostas[j] == 0) {
+                // AGORA VOCÊ PASSA 'mesa' DIRETAMENTE, SEM O ASTERISCO
                 switch (print_escolhas_jogador(mesa, jogadores, j, aposta_rodada, apostas, pote_atual)) {
                     case 1: { // Aumentar
                         int valor;
@@ -782,35 +822,43 @@ void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa)
             }
         }
         
-        // Verifica se todos apostaram igual
         todos_iguais = todos_apostaram_mesmo_valor(apostas, jogadores, qnt);
     }
-    system("clear"); // Limpa a tela após as apostas
+    system("clear");
 }
 
 void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **total_potes, int qnt, ArvAVL* arvore) {
     int ciclo = 1;
     pote pote_atual = {0};
 
-    // Reinicia estado dos jogadores para a rodada
+    // reinicia permissao dos jogadores para jogar
     for (int i = 1; i <= qnt; i++) {
         jogadores[i].ta_jogando = true;
     }
 
+    //distribui as cartas para os jogadores
+    distribuicao_cartas_jogadores(baralho, jogadores, qnt);
+
+    // Inicia o ciclo de apostas
     while (ciclo <= 3) {
         criar_mesa(mesa, baralho, ciclo, 1);
-        escolha(&pote_atual, jogadores, qnt, &mesa);
+        // CORREÇÃO: Passe 'mesa' diretamente, sem o '&'
+        escolha(&pote_atual, jogadores, qnt, mesa);
         ciclo++;
     }
     
-    // Atualiza o pote total
+    // Atualiza o total do pote
     (**total_potes).pote += pote_atual.pote;
+
+    // Adiciona o pote atual ao total 
     verificar_vencedor(jogadores, qnt, baralho, mesa, arvore);
 }
 
-// Vencedor do jogo (final) 
+// Vencedor do jogo final
 int vencedor_poker(tp_jogador jogadores[], pote *total_pote, int qnt) {
     int ativos = 0;
+
+    // Verifica quantos jogadores ainda estão ativos
     for (int i = 1; i <= qnt; i++) {
         if (jogadores[i].carteira > 0) ativos++;
         if (jogadores[i].carteira == total_pote->pote) return 0; // Fim do jogo
@@ -818,14 +866,18 @@ int vencedor_poker(tp_jogador jogadores[], pote *total_pote, int qnt) {
     return (ativos > 1); // Continua se houver mais de um jogador
 }
 
-
+// Função principal do jogo
 void jogo(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote *total_pote, int qnt, ArvAVL* arvore) {
     int continuar = 1;
+
+    // O jogo continua enquanto houver não houver um vencedor
     while (continuar) {
         rodada(mesa, baralho, jogadores, &total_pote, qnt, arvore);
         continuar = vencedor_poker(jogadores, total_pote, qnt);
     }
-    contador_maos(arvore, qnt);
+
+    // Exibe as mãos de todas as jogadas do jogo
+    apresentar_contagem_maos(arvore);
 }
 
 #endif

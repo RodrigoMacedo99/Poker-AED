@@ -33,10 +33,9 @@ int main() {
     ArvAVL *arvore = criarAVL();   
 
     criar_baralho(baralho);
-    //printf("\n-----CARTAS CRIADAS-----\n\n");
-    //imprimir_baralho(baralho);
+
     embaralhar(baralho);
-    //printf("\n-----CARTAS EMBARALHADAS E EMPILHADAS-----\n ");
+
     empilhar(&pilha_baralho, baralho);
 
     printf("\n===== BEM-VINDOS AO PATOPOKER =====\n");
