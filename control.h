@@ -122,7 +122,7 @@ void imprimir_jogadores(tp_jogador j[], int qnt) {
 void distribuicao_cartas_jogadores(tp_pilha *baralho, tp_jogador jogador[], int qnt) {
     tp_item aux;
     for (int i = 1; i <= qnt; i++) {
-        printf("\nCartas de %s:\n", jogador[i].nome);
+        //printf("\nCartas de %s:\n", jogador[i].nome);
         
         // Primeira carta
         if (!pop(baralho, &aux)) {
@@ -140,7 +140,8 @@ void distribuicao_cartas_jogadores(tp_pilha *baralho, tp_jogador jogador[], int 
         }
         strncpy(jogador[i].mao[1].valor, aux.c.valor, sizeof(aux.c.valor)-1);
         strncpy(jogador[i].mao[1].naipe, aux.c.naipe, sizeof(aux.c.naipe)-1);
-        imprime_carta(jogador[i].mao[1]);
+        //imprime_carta(jogador[i].mao[1]);
+        system("cls");
     }
 }
 
@@ -225,6 +226,7 @@ int tem_quadra(tp_carta cartas[], int total, tp_carta cartas_combinacao[5]) {
 	}
 	return 0;
 }
+
 int tem_full_house(tp_carta cartas[], int total, tp_carta cartas_combinacao[5]) {
     int contagem[15] = {0};
     tp_carta cartas_por_valor[15][4];
@@ -581,6 +583,7 @@ void identificar_e_anunciar_vencedores(tp_jogador jogadores[], int qnt, int pont
     }
 }
 
+
 void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_listad *mesa, ArvAVL* arvore){
     static int resultado_anunciado = 0;
     if (resultado_anunciado) return;
@@ -606,7 +609,8 @@ void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_listad *mesa, ArvAVL
         }
 
         // Verifica combinações e armazena cartas vencedoras
-        pontuacoes[i] = avaliar_pontuacao(todas, k, jogadores[i].cartas_vencedoras);
+        int pont = avaliar_pontuacao(todas, k, jogadores[i].cartas_vencedoras);
+        pontuacoes[i] = pont;
         
         printf("%s -> ", jogadores[i].nome);
         imprimir_tipo_mao(pontuacoes[i]);
@@ -615,9 +619,8 @@ void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_listad *mesa, ArvAVL
         if (pontuacoes[i] > melhor_pontuacao) {
             melhor_pontuacao = pontuacoes[i];
         }
-	    
         // Adiciona os tipos das mãos no contador da árvore
-        inserir(arvore, pontuacoes[i]);////////////////////    RECENTE   /////////////////////////
+        inserir(arvore, pont);////////////////////    RECENTE   /////////////////////////
 
     }
 
@@ -809,7 +812,7 @@ void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa)
             if (apostas[j] < aposta_rodada || apostas[j] == 0) {
                 switch (print_escolhas_jogador(mesa, jogadores, j, aposta_rodada, apostas, pote_atual)) {
                     case 1:  // Aumentar
-                        todos_iguais = aumentar_aposta(jogadores, j, &aposta_rodada, &apostas[j], pote_atual);
+                        todos_iguais = aumentar_aposta(jogadores, j, apostas, &aposta_rodada, pote_atual);
                         break;
                     case 2: // Desistir
                         jogadores[j].ta_jogando = false;
@@ -823,11 +826,13 @@ void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa)
                         break;
                 }
             }
+            
+            system("cls");
         }
         
         todos_iguais = todos_apostaram_mesmo_valor(apostas, jogadores, qnt);
     }
-    system("clear");
+    system("cls");
 }
 
 void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **total_potes, int qnt, ArvAVL* arvore) {
@@ -846,12 +851,13 @@ void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **t
     while (4 > ciclo) {
         criar_mesa(mesa, baralho, ciclo); // Cola as cartas na mesa
         escolha(&pote_atual, jogadores, qnt, mesa); // Faz escolha dos jogadores 
-        system("clear");
+        system("cls");
         ciclo++;
     }
     
+    verificar_vencedor(jogadores, qnt, mesa, arvore);
     esvazia_listad(mesa); // Limpa a mesa para a próxima rodada
-    system("clear");
+    system("cls");
 
     // Atualiza o total do pote
     (**total_potes).pote += pote_atual.pote;
@@ -894,6 +900,7 @@ void jogo(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote *tota
 
     // Exibe as mãos de todas as jogadas do jogo
     apresentar_contagem_maos(arvore);
+    emOrd(arvore);
 }
 
 #endif

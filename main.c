@@ -1,5 +1,6 @@
 //projeto aed - Ana Beatriz Araújo, Beatriz Mouriño, João Pedro Amorim, Levi Abreu, Rodrigo Macêdo.
 #include "control.h"
+#include <windows.h>
 
 // Função para exibir as regras do jogo
 void regras_do_jogo() {
@@ -47,9 +48,9 @@ int main() {
     tp_jogador jogadores[qnt+1];
     criar_jogadores(jogadores, qnt);
     
-    system("clear");
+    system("cls");
     jogo(mesa, &pilha_baralho, jogadores, &total_potes, qnt, arvore);
-    printf("Acabou o jogo!");
+    printf("\n\n\n\nAcabou o jogo!");
 
     return 0;
 }

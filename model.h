@@ -13,7 +13,7 @@ typedef struct {
 
 typedef struct {
     char nome[50]; //Nome do jogador
-    short int id_do_jogador; //id da peça
+    char nome_arquivo[50]; //Nome do arquivo
     int carteira;
     bool ta_jogando;
     tp_carta *mao; 
