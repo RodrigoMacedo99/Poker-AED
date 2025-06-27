@@ -47,6 +47,7 @@ int main() {
     tp_jogador jogadores[qnt+1];
     criar_jogadores(jogadores, qnt);
     
+    system("clear");
     jogo(mesa, &pilha_baralho, jogadores, &total_potes, qnt, arvore);
     printf("Acabou o jogo!");
 

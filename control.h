@@ -36,7 +36,7 @@ void imprime_valor_carta(int valor);
 // --- Resultados e Desempate ---
 void imprimir_tipo_mao(int tipo);
 void desempate_cartas_altas(tp_jogador jogadores[], int qnt_vencedores, int vencedores[], tp_listad *mesa);
-void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_pilha *baralho, tp_listad *mesa, ArvAVL* arvore);
+void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_listad *mesa, ArvAVL* arvore);
 
 void imprime_carta(tp_carta c) {
     printf("[%s | %s]\n", c.valor, c.naipe);
@@ -168,10 +168,10 @@ void criar_mesa(tp_listad *lista, tp_pilha *baralho, int ciclo, int imprimir) {
             return;
     }
 
-    if (imprimir) {
+    /*if (imprimir) {
         printf("\n----- MESA -----\n");
         imprime_listad(lista, 1);
-    }
+    }*/
 }
 
 // valor npumerico para as cartas que tem letras (A,K,Q e J)// valor npumerico para as cartas que tem letras (A,K,Q e J)
@@ -376,6 +376,7 @@ int tem_dois_pares(tp_carta cartas[], int total, tp_carta cartas_combinacao[5]) 
     }
     return 0;
 }
+
 int tem_um_par(tp_carta cartas[], int total, tp_carta cartas_combinacao[5]) {
     int contagem[15] = {0};
     tp_carta cartas_por_valor[15][4];
@@ -433,7 +434,7 @@ int avaliar_pontuacao(tp_carta cartas[], int total, tp_carta cartas_combinacao[5
     // Limpa as cartas da combinação
     memset(cartas_combinacao, 0, sizeof(tp_carta) * 5);
 
-    // [NOVO] Verifica Quadra primeiro, pois é uma das mãos mais fortes
+    //  Verifica Quadra primeiro, pois é uma das mãos mais fortes
     if (tem_quadra(cartas, total, cartas_combinacao)) return 8; // Retorna 8 para Quadra
     if (tem_full_house(cartas, total, cartas_combinacao)) return 7;
     if (tem_flush(cartas, total, cartas_combinacao)) return 6;
@@ -458,7 +459,7 @@ void desempate_cartas_altas(tp_jogador jogadores[], int qnt_vencedores, int venc
     
     AnaliseJogador analises[qnt_vencedores];
     
-    // 1. Analisa cada jogador
+    //  Analisa cada jogador
     for (int i = 0; i < qnt_vencedores; i++) {
         int jogador_id = vencedores[i];
         analises[i].id_jogador = jogador_id;
@@ -556,24 +557,31 @@ void imprime_valor_carta(int valor) { //Para desempate
     }
 }
 
-void salvar_log(const char* mensagem) {
-    FILE *arquivo = fopen("log_poker.txt", "a"); // "a" para adicionar ao final do arquivo
-    if (arquivo == NULL) {
-        perror("Erro ao abrir o arquivo de log");
-        return;
-    }
-    
-    // Pega a hora atual para registrar no log
-    time_t t = time(NULL);
-    struct tm *tm = localtime(&t);
-    char tempo_str[64];
-    strftime(tempo_str, sizeof(tempo_str), "%Y-%m-%d %H:%M:%S", tm);
+void identificar_e_anunciar_vencedores(tp_jogador jogadores[], int qnt, int pontuacoes[], int melhor_pontuacao, tp_listad *mesa) {
+    int qnt_vencedores = 0;
+    int vencedores[qnt + 1];
 
-    fprintf(arquivo, "[%s] %s\n", tempo_str, mensagem);
-    fclose(arquivo);
+    for (int i = 1; i <= qnt; i++) {
+        if (pontuacoes[i] == melhor_pontuacao) {
+            vencedores[qnt_vencedores++] = i;
+        }
+    }
+
+    if (qnt_vencedores == 1) {
+        printf("\n——— VENCEDOR ———\n");
+        printf("%s com ", jogadores[vencedores[0]].nome);
+        imprimir_tipo_mao(melhor_pontuacao);
+        printf("!\nCartas da combinação vencedora:\n");
+        for (int i = 0; i < 5 && strlen(jogadores[vencedores[0]].cartas_vencedoras[i].valor) > 0; i++) {
+            imprime_carta(jogadores[vencedores[0]].cartas_vencedoras[i]);
+        }
+    } else if (qnt_vencedores > 1) {
+        printf("\n=== EMPATE DETECTADO ===\n");
+        desempate_cartas_altas(jogadores, qnt_vencedores, vencedores, mesa);
+    }
 }
 
-void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_pilha *baralho, tp_listad *mesa, ArvAVL* arvore){
+void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_listad *mesa, ArvAVL* arvore){
     static int resultado_anunciado = 0;
     if (resultado_anunciado) return;
     
@@ -612,47 +620,15 @@ void verificar_vencedor(tp_jogador jogadores[], int qnt, tp_pilha *baralho, tp_l
         inserir(arvore, pontuacoes[i]);////////////////////    RECENTE   /////////////////////////
 
     }
-    
-	// Identifica vencedores
-    int qnt_vencedores = 0;
-    int vencedores[qnt];
-    
-    for (int i = 1; i <= qnt; i++) {
-        if (pontuacoes[i] == melhor_pontuacao) {
-            vencedores[qnt_vencedores++] = i;
-        }
-    }
 
-    //  Exibe resultado
-    if (qnt_vencedores == 1) {
-        printf("\n——— VENCEDOR ———\n");
-        printf("%s com ", jogadores[vencedores[0]].nome);
-        imprimir_tipo_mao(melhor_pontuacao);
-        printf("!\nCartas da combinação vencedora:\n");
-        
-        // Mostra as cartas específicas da combinação
-        for (int i = 0; i < 5 && strlen(jogadores[vencedores[0]].cartas_vencedoras[i].valor) > 0; i++){
-            imprime_carta(jogadores[vencedores[0]].cartas_vencedoras[i]);
-        }
-    } 
-    else if (qnt_vencedores > 1){
-        printf("\n=== EMPATE DETECTADO ===\n");
-        desempate_cartas_altas(jogadores, qnt_vencedores, vencedores, mesa);
-    }
-
+    identificar_e_anunciar_vencedores(jogadores, qnt, pontuacoes, melhor_pontuacao, mesa);
     resultado_anunciado = 1;
-
-    if (qnt_vencedores == 1) {
-    char log_msg[200];
-    sprintf(log_msg, "Vencedor da rodada: %s", jogadores[vencedores[0]].nome);
-    salvar_log(log_msg);
-}
 }
 
 // Função para imprimir o tipo de mão
 void imprimir_tipo_mao(int tipo) {
     const char *nomes[] = {
-        "", // Posição 0 vazia para alinhar com os valores de 1 a 8
+        "", // Índice 0 não usado
         "Carta Alta",
         "Um Par",
         "Dois Pares",
@@ -667,6 +643,7 @@ void imprimir_tipo_mao(int tipo) {
     }
 }
 
+// Função para imprimir o contador de mãos
 void print_contador(int repeticoes, int tipo_mao){
 	printf("Teve %d vezes que o(a)", repeticoes);
 	imprimir_tipo_mao(tipo_mao);
@@ -723,6 +700,10 @@ int todos_apostaram_mesmo_valor(int apostas[], tp_jogador jogadores[], int qnt) 
     return 1; // Todos que ainda jogam apostaram o mesmo valor
 }
 
+int valor_para_pagar(int aposta_rodada, int apostas[], int jogador_atual) {
+    return aposta_rodada - apostas[jogador_atual];
+}
+
 // Menu inicial das jogadas do jogador
 int print_escolhas_jogador(tp_listad *mesa, tp_jogador jogadores[], int jogador_atual, int aposta_rodada, int apostas[], pote *pote_atual)   {
     printf("************************************\n");
@@ -730,7 +711,6 @@ int print_escolhas_jogador(tp_listad *mesa, tp_jogador jogadores[], int jogador_
     imprime_listad(mesa, 1); // Imprime as cartas na mesa
 
     printf("Sua mao:\n");
-    // CORREÇÃO: Imprime as duas cartas da mão do jogador corretamente
     imprime_carta(jogadores[jogador_atual].mao[0]);
     imprime_carta(jogadores[jogador_atual].mao[1]);
 
@@ -744,8 +724,8 @@ int print_escolhas_jogador(tp_listad *mesa, tp_jogador jogadores[], int jogador_
     printf("1 - Aumentar aposta\n");
     printf("2 - Desistir\n");
 
-    // MELHORIA: Informa o valor correto a pagar ou se a ação é um "All-in"
-    int valor_a_pagar = aposta_rodada - apostas[jogador_atual];
+    // Informa o valor correto a pagar ou se a ação é um "All-in"
+    int valor_a_pagar = valor_para_pagar(aposta_rodada, apostas, jogador_atual); // Calcula o valor a pagar para continuar na partida.
     if (valor_a_pagar <= 0) {
         printf("3 - Passar (Check)\n"); // Se não há aposta para cobrir
     } else if (valor_a_pagar >= jogadores[jogador_atual].carteira) {
@@ -762,59 +742,81 @@ int print_escolhas_jogador(tp_listad *mesa, tp_jogador jogadores[], int jogador_
     return escolha;
 }
 
-// Função para escolha de ação do jogador durante a rodada de apostas - CORRIGIDA
-void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa) {
-    int aposta_rodada = 10;
-    int apostas[qnt + 1];
+int aumentar_aposta(tp_jogador jogadores[],int jogador_atual, int apostas[], int *aposta_rodada, pote *pote_atual) {
+    int valor;
+    int diferenca;
 
-    for (int i = 0; i <= qnt; i++) {
-        apostas[i] = 0;
+    printf("Digite o valor para aumentar (mínimo %d): ", *aposta_rodada + 1);
+    scanf("%d", &valor);
+
+    // Verifica se o valor é válido
+    if (valor > jogadores[jogador_atual].carteira) {
+        valor = jogadores[jogador_atual].carteira;
+    } else if (valor < *aposta_rodada + 1) {
+        valor = *aposta_rodada + 1;
     }
 
-    int todos_iguais = 0;
+    // Atualiza a aposta do jogador
+    *aposta_rodada = valor;
+
+    // Calcula a diferença entre o valor atual da aposta e o que o jogador já apostou
+    diferenca = valor_para_pagar(*aposta_rodada, apostas, jogador_atual);
+
+    // Atualiza o pote da rodada
+    pote_atual->pote += diferenca;
+    //Reduz a carteira do jogador
+    jogadores[jogador_atual].carteira -= diferenca;
+
+    // Atualiza a aposta do jogador no vetor de apostas
+    apostas[jogador_atual] = valor;
+
+    return 0;
+}
+
+void pagar_aposta(tp_jogador jogadores[], int j, int aposta_rodada, int apostas[], pote *pote_atual) {
+    int pagar = valor_para_pagar(aposta_rodada, apostas, j);
+
+    if (pagar > jogadores[j].carteira) {
+        pagar = jogadores[j].carteira;
+    }
+    pote_atual->pote += pagar;
+    jogadores[j].carteira -= pagar;
+    apostas[j] = aposta_rodada;
+}
+
+// Função para escolha de ação do jogador durante a rodada de apostas - CORRIGIDA
+void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa) {
+    int aposta_rodada = 0; // Valor mínimo da aposta na rodada
+    int apostas[qnt + 1]; //vetor para armazenar as apostas de cada jogador
+    int todos_iguais = 0; // Variável para verificar se todos apostaram o mesmo valor
+
+    // Inicializa as apostas e o estado de jogo dos jogadores
+    for (int i = 1; i <= qnt; i++) {
+        jogadores[i].ta_jogando = true; // Reinicia o estado de jogo dos jogadores
+        apostas[i] = 0; // Inicializa as apostas de cada jogador
+    }
+
+    // Continua as apostas que todos tenham apostado o mesmo valor ou que todos tenham desistido
     while (!todos_iguais) {
         todos_iguais = 1;
+
+        // Todos os jogadores apostam ou desistem
         for (int j = 1; j <= qnt; j++) {
             if (!jogadores[j].ta_jogando) continue;
-            
+
+            // Verifica se o jogador precisa aumentar a aposta
             if (apostas[j] < aposta_rodada || apostas[j] == 0) {
-                // AGORA VOCÊ PASSA 'mesa' DIRETAMENTE, SEM O ASTERISCO
                 switch (print_escolhas_jogador(mesa, jogadores, j, aposta_rodada, apostas, pote_atual)) {
-                    case 1: { // Aumentar
-                        int valor;
-                        printf("Digite o valor para aumentar (mínimo %d): ", aposta_rodada + 1);
-                        scanf("%d", &valor);
-                        
-                        // Validação do valor
-                        if (valor > jogadores[j].carteira) {
-                            valor = jogadores[j].carteira;
-                        } else if (valor < aposta_rodada + 1) {
-                            valor = aposta_rodada + 1;
-                        }
-                        
-                        aposta_rodada = valor;
-                        int diferenca = valor - apostas[j];
-                        pote_atual->pote += diferenca;
-                        jogadores[j].carteira -= diferenca;
-                        apostas[j] = valor;
-                        todos_iguais = 0; // Reinicia verificação
+                    case 1:  // Aumentar
+                        todos_iguais = aumentar_aposta(jogadores, j, &aposta_rodada, &apostas[j], pote_atual);
                         break;
-                    }
                     case 2: // Desistir
                         jogadores[j].ta_jogando = false;
                         printf("%s desistiu da rodada.\n", jogadores[j].nome);
                         break;
                     case 3: // Pagar/igualar
-                    {
-                        int pagar = aposta_rodada - apostas[j];
-                        if (pagar > jogadores[j].carteira) {
-                            pagar = jogadores[j].carteira;
-                        }
-                        pote_atual->pote += pagar;
-                        jogadores[j].carteira -= pagar;
-                        apostas[j] = aposta_rodada;
+                        pagar_aposta(jogadores, j, aposta_rodada, apostas, pote_atual);
                         break;
-                    }
                     default:
                         printf("Opção inválida. Pular jogador.\n");
                         break;
@@ -828,8 +830,8 @@ void escolha(pote *pote_atual, tp_jogador jogadores[], int qnt, tp_listad *mesa)
 }
 
 void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **total_potes, int qnt, ArvAVL* arvore) {
-    int ciclo = 1;
-    pote pote_atual = {0};
+    int ciclo = 1; // Ciclo de apostas 
+    pote pote_atual = {0}; // Pote da rodada atual
 
     // reinicia permissao dos jogadores para jogar
     for (int i = 1; i <= qnt; i++) {
@@ -840,10 +842,9 @@ void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **t
     distribuicao_cartas_jogadores(baralho, jogadores, qnt);
 
     // Inicia o ciclo de apostas
-    while (ciclo <= 3) {
-        criar_mesa(mesa, baralho, ciclo, 1);
-        // CORREÇÃO: Passe 'mesa' diretamente, sem o '&'
-        escolha(&pote_atual, jogadores, qnt, mesa);
+    while (ciclo < 4) {
+        criar_mesa(mesa, baralho, ciclo, 1); // Cola as cartas na mesa
+        escolha(&pote_atual, jogadores, qnt, mesa); // Faz escolha dos jogadores 
         ciclo++;
     }
     
@@ -851,12 +852,12 @@ void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **t
     (**total_potes).pote += pote_atual.pote;
 
     // Adiciona o pote atual ao total 
-    verificar_vencedor(jogadores, qnt, baralho, mesa, arvore);
+    verificar_vencedor(jogadores, qnt, mesa, arvore);
 }
 
 // Vencedor do jogo final
 int vencedor_poker(tp_jogador jogadores[], pote *total_pote, int qnt) {
-    int ativos = 0;
+    int ativos = 0; // Contador de jogadores ativos
 
     // Verifica quantos jogadores ainda estão ativos
     for (int i = 1; i <= qnt; i++) {
