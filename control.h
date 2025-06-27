@@ -144,8 +144,8 @@ void distribuicao_cartas_jogadores(tp_pilha *baralho, tp_jogador jogador[], int 
     }
 }
 
-// Modifique a declaração para incluir o parâmetro 'imprimir'
-void criar_mesa(tp_listad *lista, tp_pilha *baralho, int ciclo, int imprimir) {
+// adiciona cartas na mesa de acordo com o ciclo 
+void criar_mesa(tp_listad *lista, tp_pilha *baralho, int ciclo) {
     tp_item aux;
     
     switch (ciclo) {
@@ -844,7 +844,7 @@ void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **t
 
     // Inicia o ciclo de apostas
     while (4 > ciclo) {
-        criar_mesa(mesa, baralho, ciclo, 1); // Cola as cartas na mesa
+        criar_mesa(mesa, baralho, ciclo); // Cola as cartas na mesa
         escolha(&pote_atual, jogadores, qnt, mesa); // Faz escolha dos jogadores 
         system("clear");
         ciclo++;
