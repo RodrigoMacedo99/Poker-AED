@@ -149,6 +149,20 @@ int remove_listad(tp_listad *lista, tp_carta e) {
   return 0; // Sucesso: elemento removido
 }
 
+// Esvazia a lista, removendo todos os n�s e liberando a mem�ria
+void esvazia_listad(tp_listad *lista) {
+  if (!lista) return;
+  tp_no *atu = lista->ini;
+  while (atu != NULL) {
+    tp_no *prox = atu->prox;
+    free(atu);
+    atu = prox;
+  }
+  lista->ini = NULL;
+  lista->fim = NULL;
+  lista->tamanho = 0;
+}
+
 // Remover a carta com a referencia do ID delas; E retorna os valores das tp_cartas 
 tp_carta remove_listad_id (tp_listad *lista, tp_carta e){   
   tp_no *atu;

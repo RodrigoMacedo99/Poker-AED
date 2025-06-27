@@ -773,6 +773,7 @@ int aumentar_aposta(tp_jogador jogadores[],int jogador_atual, int apostas[], int
     return 0;
 }
 
+// pagar aposta do jogador
 void pagar_aposta(tp_jogador jogadores[], int j, int aposta_rodada, int apostas[], pote *pote_atual) {
     int pagar = valor_para_pagar(aposta_rodada, apostas, j);
 
@@ -842,12 +843,16 @@ void rodada(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote **t
     distribuicao_cartas_jogadores(baralho, jogadores, qnt);
 
     // Inicia o ciclo de apostas
-    while (ciclo < 4) {
+    while (4 > ciclo) {
         criar_mesa(mesa, baralho, ciclo, 1); // Cola as cartas na mesa
         escolha(&pote_atual, jogadores, qnt, mesa); // Faz escolha dos jogadores 
+        system("clear");
         ciclo++;
     }
     
+    esvazia_listad(mesa); // Limpa a mesa para a próxima rodada
+    system("clear");
+
     // Atualiza o total do pote
     (**total_potes).pote += pote_atual.pote;
 
@@ -873,6 +878,16 @@ void jogo(tp_listad *mesa, tp_pilha *baralho, tp_jogador jogadores[], pote *tota
 
     // O jogo continua enquanto houver não houver um vencedor
     while (continuar) {
+        // Verifica se o baralho está vazio e cria um novo baralho se necessário
+        if(baralho->topo <= (qnt * 2 + 5)) {
+            tp_carta baralho_aux[52]; // vetor auxiliar para o baralho
+            
+            inicializa_pilha(baralho); // Esvazia o baralho atual
+            criar_baralho(baralho_aux); // Cria um novo baralho se estiver vazio
+            embaralhar(baralho_aux); // Reembaralha o baralho se estiver vazio
+            empilhar(baralho, baralho_aux); // Empilha as cartas no baralho
+        }
+
         rodada(mesa, baralho, jogadores, &total_pote, qnt, arvore);
         continuar = vencedor_poker(jogadores, total_pote, qnt);
     }
